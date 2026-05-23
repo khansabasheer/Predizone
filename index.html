@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PrediZone FIFA</title>
+  <title>PrediZone FIFA Pro</title>
 
   <style>
     body {
@@ -44,8 +44,12 @@
       width: 280px;
     }
 
-    #matches, #leaderboard {
+    #adminPanel {
+      display: none;
       margin-top: 20px;
+      padding: 15px;
+      border: 2px solid #00ff88;
+      border-radius: 10px;
     }
   </style>
 </head>
@@ -55,21 +59,35 @@
 <h1>⚽ PrediZone FIFA</h1>
 
 <!-- AUTH -->
-<div id="auth">
-  <h3>Login / Signup</h3>
-  <input id="email" placeholder="Email"><br>
-  <input id="password" type="password" placeholder="Password"><br>
+<div>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
 
   <button onclick="signup()">Sign Up</button>
   <button onclick="login()">Login</button>
   <button onclick="logout()">Logout</button>
 </div>
 
+<hr>
+
 <h2>Matches</h2>
 <div id="matches"></div>
 
-<h2>Leaderboard</h2>
+<h2 id="leaderboardTitle">🏆 Leaderboard</h2>
 <div id="leaderboard"></div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel">
+  <h2>🧑‍💻 Admin Panel</h2>
+
+  <input id="team1" placeholder="Team 1">
+  <input id="team2" placeholder="Team 2">
+
+  <button onclick="addMatch()">Add Match</button>
+
+  <h3>Manage Matches</h3>
+  <div id="adminMatches"></div>
+</div>
 
 <!-- FIREBASE -->
 <script type="module">
@@ -88,10 +106,12 @@ import {
   collection,
   getDocs,
   doc,
-  setDoc
+  setDoc,
+  deleteDoc,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
 
-/* 🔴 FIREBASE CONFIG (REPLACE THIS) */
+/* 🔴 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -103,16 +123,17 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+/* 🔐 ADMIN EMAIL */
+const ADMIN_EMAIL = "youradmin@gmail.com";
+
 /* ---------------- AUTH ---------------- */
 
 window.signup = function () {
-  createUserWithEmailAndPassword(auth, email.value, password.value)
-    .catch(e => alert(e.message));
+  createUserWithEmailAndPassword(auth, email.value, password.value);
 };
 
 window.login = function () {
-  signInWithEmailAndPassword(auth, email.value, password.value)
-    .catch(e => alert(e.message));
+  signInWithEmailAndPassword(auth, email.value, password.value);
 };
 
 window.logout = function () {
@@ -121,33 +142,76 @@ window.logout = function () {
 
 /* ---------------- MATCHES ---------------- */
 
-const matches = [
-  { id: "m1", team1: "Brazil", team2: "Argentina" },
-  { id: "m2", team1: "France", team2: "Germany" },
-  { id: "m3", team1: "Spain", team2: "Portugal" }
-];
+async function loadMatches() {
+  const snap = await getDocs(collection(db, "matches"));
 
-function loadMatches() {
   const container = document.getElementById("matches");
-  container.innerHTML = "";
+  const adminContainer = document.getElementById("adminMatches");
 
-  matches.forEach(m => {
+  container.innerHTML = "";
+  adminContainer.innerHTML = "";
+
+  snap.forEach(d => {
+    const m = d.data();
+
+    // USER VIEW
     container.innerHTML += `
       <div class="card">
         <h3>${m.team1} vs ${m.team2}</h3>
 
-        <input id="t1-${m.id}" placeholder="${m.team1}">
-        <input id="t2-${m.id}" placeholder="${m.team2}">
+        <input id="t1-${d.id}" placeholder="${m.team1}">
+        <input id="t2-${d.id}" placeholder="${m.team2}">
 
-        <button onclick="savePrediction('${m.id}')">
+        <button onclick="savePrediction('${d.id}')">
           Submit
         </button>
+      </div>
+    `;
 
-        <div id="saved-${m.id}"></div>
+    // ADMIN VIEW
+    adminContainer.innerHTML += `
+      <div class="card">
+        <h3>${m.team1} vs ${m.team2}</h3>
+        <button onclick="deleteMatch('${d.id}')">❌ Delete</button>
       </div>
     `;
   });
 }
+
+/* ---------------- ADD MATCH ---------------- */
+
+window.addMatch = async function () {
+  const user = auth.currentUser;
+
+  if (!user || user.email !== ADMIN_EMAIL) {
+    return alert("Admin only!");
+  }
+
+  const id = Date.now().toString();
+
+  await setDoc(doc(db, "matches", id), {
+    team1: team1.value,
+    team2: team2.value
+  });
+
+  team1.value = "";
+  team2.value = "";
+
+  loadMatches();
+};
+
+/* ---------------- DELETE MATCH ---------------- */
+
+window.deleteMatch = async function (id) {
+  const user = auth.currentUser;
+
+  if (!user || user.email !== ADMIN_EMAIL) {
+    return alert("Admin only!");
+  }
+
+  await deleteDoc(doc(db, "matches", id));
+  loadMatches();
+};
 
 /* ---------------- SAVE PREDICTION ---------------- */
 
@@ -158,11 +222,6 @@ window.savePrediction = async function (matchId) {
   const s1 = document.getElementById(`t1-${matchId}`).value;
   const s2 = document.getElementById(`t2-${matchId}`).value;
 
-  if (s1 === "" || s2 === "") {
-    alert("Enter scores!");
-    return;
-  }
-
   await setDoc(doc(db, "predictions", user.uid + "_" + matchId), {
     userId: user.uid,
     matchId,
@@ -170,43 +229,54 @@ window.savePrediction = async function (matchId) {
     score2: Number(s2)
   });
 
-  document.getElementById(`saved-${matchId}`).innerText =
-    "✅ Prediction Saved";
+  alert("Prediction saved!");
 };
 
-/* ---------------- LEADERBOARD ---------------- */
+/* ---------------- LIVE LEADERBOARD ---------------- */
 
-async function loadLeaderboard() {
-  const snap = await getDocs(collection(db, "predictions"));
+function startLiveLeaderboard() {
 
-  const points = {};
+  const ref = collection(db, "predictions");
 
-  snap.forEach(docSnap => {
-    const p = docSnap.data();
+  onSnapshot(ref, (snapshot) => {
 
-    if (!points[p.userId]) points[p.userId] = 0;
+    const points = {};
 
-    // SIMPLE DEMO SCORING RULE
-    if (p.score1 === 2 && p.score2 === 1) {
-      points[p.userId] += 3;
-    }
+    snapshot.forEach(docSnap => {
+      const p = docSnap.data();
+
+      if (!points[p.userId]) points[p.userId] = 0;
+
+      // demo scoring logic
+      if (p.score1 === 2 && p.score2 === 1) {
+        points[p.userId] += 3;
+      }
+    });
+
+    const sorted = Object.entries(points)
+      .sort((a, b) => b[1] - a[1]);
+
+    let html = "";
+
+    sorted.forEach(([user, score]) => {
+      html += `<p>${user} — ${score} pts</p>`;
+    });
+
+    document.getElementById("leaderboard").innerHTML = html;
   });
-
-  let html = "";
-
-  Object.entries(points).forEach(([user, score]) => {
-    html += `<p>${user}: ${score} pts</p>`;
-  });
-
-  document.getElementById("leaderboard").innerHTML = html;
 }
 
 /* ---------------- AUTH STATE ---------------- */
 
 onAuthStateChanged(auth, user => {
+
   if (user) {
     loadMatches();
-    loadLeaderboard();
+    startLiveLeaderboard();
+
+    if (user.email === ADMIN_EMAIL) {
+      document.getElementById("adminPanel").style.display = "block";
+    }
   }
 });
 
