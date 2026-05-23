@@ -114,11 +114,22 @@
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyAwflETP5PbdzrCqwTtS66lNv2mHq6C31c",
+  authDomain: "predizone-cc184.firebaseapp.com",
+  projectId: "predizone-cc184",
+  storageBucket: "predizone-cc184.firebasestorage.app",
+  messagingSenderId: "936075401384",
+  appId: "1:936075401384:web:f4fff3da365ab6e8068a9d"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+  
 import {
   getFirestore,
   collection,
