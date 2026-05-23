@@ -2,6 +2,7 @@
 <html>
 
 <head>
+
   <title>PrediZone</title>
 
   <style>
@@ -11,15 +12,30 @@
       color: white;
       text-align: center;
       font-family: Arial;
-      padding-top: 50px;
+      padding-top: 40px;
+    }
+
+    h1 {
+      margin-bottom: 40px;
+    }
+
+    #matches {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
     }
 
     .card {
       background: #222;
       width: 300px;
-      margin: auto;
       padding: 20px;
       border-radius: 10px;
+    }
+
+    .card:hover {
+      transform: scale(1.03);
+      transition: 0.3s;
     }
 
     input {
@@ -43,32 +59,72 @@
 
 <body>
 
-  <h1>⚽ PrediZone</h1>
+  <h1>⚽ PrediZone FIFA World Cup</h1>
 
-  <div class="card">
+  <div id="matches"></div>
 
-    <h2>Argentina vs Brazil</h2>
+  <script>
 
-    <input type="number" placeholder="Argentina score">
+    const matches = [
 
-    <input type="number" placeholder="Brazil score">
+      {
+        team1: "Team A",
+        team2: "Team B"
+      },
 
-<button onclick="submitPrediction()">
-  Submit Prediction
-</button>
+      {
+        team1: "Team C",
+        team2: "Team D"
+      },
 
-  </div>
+      {
+        team1: "Team E",
+        team2: "Team F"
+      }
 
-<script>
+    ];
 
-function submitPrediction() {
+    const matchesContainer =
+      document.getElementById("matches");
 
-  alert("Prediction Submitted!");
+    matches.forEach(match => {
 
-}
+      matchesContainer.innerHTML += `
 
-</script>
-  
+        <div class="card">
+
+          <h2>
+            ${match.team1} vs ${match.team2}
+          </h2>
+
+          <input
+            type="number"
+            placeholder="${match.team1} score"
+          >
+
+          <input
+            type="number"
+            placeholder="${match.team2} score"
+          >
+
+          <button onclick="submitPrediction()">
+            Submit Prediction
+          </button>
+
+        </div>
+
+      `;
+
+    });
+
+    function submitPrediction() {
+
+      alert("Prediction Submitted!");
+
+    }
+
+  </script>
+
 </body>
 
 </html>
