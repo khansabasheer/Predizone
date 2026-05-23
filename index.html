@@ -8,15 +8,17 @@
   <style>
 
     body {
-      background: #111;
+      background-color: #111;
       color: white;
+      font-family: Arial, sans-serif;
       text-align: center;
-      font-family: Arial;
-      padding-top: 40px;
+      padding: 40px;
+      margin: 0;
     }
 
     h1 {
       margin-bottom: 40px;
+      color: #00ff88;
     }
 
     #matches {
@@ -27,30 +29,44 @@
     }
 
     .card {
-      background: #222;
+      background-color: #222;
       width: 300px;
       padding: 20px;
-      border-radius: 10px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,255,100,0.2);
+      transition: 0.3s;
     }
 
     .card:hover {
       transform: scale(1.03);
-      transition: 0.3s;
+    }
+
+    h2 {
+      margin-bottom: 20px;
     }
 
     input {
-      display: block;
       width: 90%;
-      margin: 10px auto;
       padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
     }
 
     button {
-      background: green;
+      background-color: #00aa55;
       color: white;
       border: none;
       padding: 10px 20px;
+      border-radius: 5px;
+      font-size: 16px;
       cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #00cc66;
     }
 
   </style>
@@ -80,6 +96,11 @@
       {
         team1: "Team E",
         team2: "Team F"
+      },
+
+      {
+        team1: "Team G",
+        team2: "Team H"
       }
 
     ];
@@ -119,7 +140,7 @@
 
     function submitPrediction() {
 
-      alert("Prediction Submitted!");
+      alert("✅ Prediction Submitted!");
 
     }
 
