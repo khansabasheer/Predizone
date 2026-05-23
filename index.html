@@ -113,8 +113,6 @@
 <!-- FIREBASE -->
 <script type="module">
 
-<script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
 import { 
   getAuth,
@@ -131,7 +129,7 @@ import {
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
 
-/* ✅ ONLY ONE CONFIG */
+/* 🔥 FIREBASE CONFIG (YOUR REAL ONE) */
 const firebaseConfig = {
   apiKey: "AIzaSyAwflETP5PbdzrCqwTtS66lNv2mHq6C31c",
   authDomain: "predizone-cc184.firebaseapp.com",
@@ -157,11 +155,11 @@ async function loadMatches() {
   let adminHtml = "";
 
   snap.forEach(m => {
-    const data = m.data();
+    const d = m.data();
 
     html += `
       <div class="card">
-        <div class="match-title">${data.team1} vs ${data.team2}</div>
+        <div class="match-title">${d.team1} vs ${d.team2}</div>
 
         <input id="p1-${m.id}" placeholder="Score 1">
         <input id="p2-${m.id}" placeholder="Score 2">
@@ -172,7 +170,7 @@ async function loadMatches() {
 
     adminHtml += `
       <div class="card">
-        <div class="match-title">${data.team1} vs ${data.team2}</div>
+        <div class="match-title">${d.team1} vs ${d.team2}</div>
 
         <input id="r1-${m.id}" placeholder="Score 1">
         <input id="r2-${m.id}" placeholder="Score 2">
@@ -215,13 +213,14 @@ window.savePrediction = async function (id) {
     score2: Number(document.getElementById(`p2-${id}`).value)
   });
 
-  alert("Saved!");
+  alert("Prediction saved!");
 };
 
-/* ---------------- RESULT ---------------- */
+/* ---------------- SET RESULT ---------------- */
 
 window.setResult = async function (id) {
   const user = auth.currentUser;
+
   if (!user || user.email !== ADMIN_EMAIL) {
     return alert("Admin only!");
   }
@@ -269,11 +268,11 @@ async function calculateLeaderboard() {
   document.getElementById("leaderboard").innerHTML =
     Object.entries(points)
       .sort((a,b)=>b[1]-a[1])
-      .map(x => `<div class="leaderboard-item">${x[0]} - ${x[1]} pts</div>`)
+      .map(x => `<div class="leaderboard-item">${x[0]} — ${x[1]} pts</div>`)
       .join("");
 }
 
-/* ---------------- LIVE ---------------- */
+/* ---------------- LIVE UPDATES ---------------- */
 
 function startLive() {
   onSnapshot(collection(db, "matches"), () => {
@@ -286,17 +285,16 @@ function startLive() {
   });
 }
 
-/* ---------------- AUTH ---------------- */
+/* ---------------- START APP (FIXED) ---------------- */
 
 onAuthStateChanged(auth, user => {
-  if (user) {
-    loadMatches();
-    calculateLeaderboard();
-    startLive();
+  // ALWAYS LOAD CONTENT (FIX)
+  loadMatches();
+  calculateLeaderboard();
+  startLive();
 
-    if (user.email === ADMIN_EMAIL) {
-      document.getElementById("adminPanel").style.display = "block";
-    }
+  if (user && user.email === ADMIN_EMAIL) {
+    document.getElementById("adminPanel").style.display = "block";
   }
 });
 
