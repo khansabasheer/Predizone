@@ -113,23 +113,14 @@
 <!-- FIREBASE -->
 <script type="module">
 
+<script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+import { 
+  getAuth,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAwflETP5PbdzrCqwTtS66lNv2mHq6C31c",
-  authDomain: "predizone-cc184.firebaseapp.com",
-  projectId: "predizone-cc184",
-  storageBucket: "predizone-cc184.firebasestorage.app",
-  messagingSenderId: "936075401384",
-  appId: "1:936075401384:web:f4fff3da365ab6e8068a9d"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-  
 import {
   getFirestore,
   collection,
@@ -140,16 +131,20 @@ import {
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
 
-/* 🔴 FIREBASE CONFIG */
+/* ✅ ONLY ONE CONFIG */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID"
+  apiKey: "AIzaSyAwflETP5PbdzrCqwTtS66lNv2mHq6C31c",
+  authDomain: "predizone-cc184.firebaseapp.com",
+  projectId: "predizone-cc184",
+  storageBucket: "predizone-cc184.firebasestorage.app",
+  messagingSenderId: "936075401384",
+  appId: "1:936075401384:web:f4fff3da365ab6e8068a9d"
 };
 
+/* INIT ONLY ONCE */
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 const ADMIN_EMAIL = "youradmin@gmail.com";
 
@@ -168,8 +163,8 @@ async function loadMatches() {
       <div class="card">
         <div class="match-title">${data.team1} vs ${data.team2}</div>
 
-        <input id="p1-${m.id}" placeholder="${data.team1}">
-        <input id="p2-${m.id}" placeholder="${data.team2}">
+        <input id="p1-${m.id}" placeholder="Score 1">
+        <input id="p2-${m.id}" placeholder="Score 2">
 
         <button onclick="savePrediction('${m.id}')">Predict</button>
       </div>
@@ -205,8 +200,6 @@ window.addMatch = async function () {
 
   team1.value = "";
   team2.value = "";
-
-  loadMatches();
 };
 
 /* ---------------- SAVE PREDICTION ---------------- */
@@ -215,20 +208,17 @@ window.savePrediction = async function (id) {
   const user = auth.currentUser;
   if (!user) return alert("Login first!");
 
-  const s1 = document.getElementById(`p1-${id}`).value;
-  const s2 = document.getElementById(`p2-${id}`).value;
-
   await setDoc(doc(db, "predictions", user.uid + "_" + id), {
     userId: user.uid,
     matchId: id,
-    score1: Number(s1),
-    score2: Number(s2)
+    score1: Number(document.getElementById(`p1-${id}`).value),
+    score2: Number(document.getElementById(`p2-${id}`).value)
   });
 
   alert("Saved!");
 };
 
-/* ---------------- SET MATCH RESULT (ADMIN) ---------------- */
+/* ---------------- RESULT ---------------- */
 
 window.setResult = async function (id) {
   const user = auth.currentUser;
@@ -236,34 +226,25 @@ window.setResult = async function (id) {
     return alert("Admin only!");
   }
 
-  const s1 = document.getElementById(`r1-${id}`).value;
-  const s2 = document.getElementById(`r2-${id}`).value;
-
   await updateDoc(doc(db, "matches", id), {
-    score1: Number(s1),
-    score2: Number(s2)
+    score1: Number(document.getElementById(`r1-${id}`).value),
+    score2: Number(document.getElementById(`r2-${id}`).value)
   });
 
   calculateLeaderboard();
 };
 
-/* ---------------- REAL SCORING ---------------- */
+/* ---------------- SCORING ---------------- */
 
 function calculatePoints(pred, real) {
   if (real.score1 == null) return 0;
 
-  if (pred.score1 == real.score1 && pred.score2 == real.score2) {
-    return 3; // exact
-  }
+  if (pred.score1 == real.score1 && pred.score2 == real.score2) return 3;
 
-  const predResult = Math.sign(pred.score1 - pred.score2);
-  const realResult = Math.sign(real.score1 - real.score2);
+  const pr = Math.sign(pred.score1 - pred.score2);
+  const rr = Math.sign(real.score1 - real.score2);
 
-  if (predResult === realResult) {
-    return 1; // correct result
-  }
-
-  return 0;
+  return pr === rr ? 1 : 0;
 }
 
 /* ---------------- LEADERBOARD ---------------- */
@@ -278,27 +259,21 @@ async function calculateLeaderboard() {
   const points = {};
 
   predSnap.forEach(p => {
-    const data = p.data();
-    const match = matches[data.matchId];
+    const d = p.data();
 
-    if (!points[data.userId]) points[data.userId] = 0;
+    if (!points[d.userId]) points[d.userId] = 0;
 
-    points[data.userId] += calculatePoints(data, match);
+    points[d.userId] += calculatePoints(d, matches[d.matchId]);
   });
 
-  let sorted = Object.entries(points)
-    .sort((a,b) => b[1]-a[1]);
-
-  let html = "";
-
-  sorted.forEach(([user, score]) => {
-    html += `<div class="leaderboard-item">${user} — ${score} pts</div>`;
-  });
-
-  document.getElementById("leaderboard").innerHTML = html;
+  document.getElementById("leaderboard").innerHTML =
+    Object.entries(points)
+      .sort((a,b)=>b[1]-a[1])
+      .map(x => `<div class="leaderboard-item">${x[0]} - ${x[1]} pts</div>`)
+      .join("");
 }
 
-/* ---------------- LIVE UPDATES ---------------- */
+/* ---------------- LIVE ---------------- */
 
 function startLive() {
   onSnapshot(collection(db, "matches"), () => {
@@ -326,6 +301,6 @@ onAuthStateChanged(auth, user => {
 });
 
 </script>
-
+  
 </body>
 </html>
