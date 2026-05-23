@@ -69,6 +69,12 @@
       background-color: #00cc66;
     }
 
+    .saved {
+      margin-top: 10px;
+      color: #00ff88;
+      font-size: 14px;
+    }
+
   </style>
 
 </head>
@@ -114,6 +120,9 @@
 
     matches.forEach(match => {
 
+      const savedPrediction =
+        JSON.parse(localStorage.getItem(match.id));
+
       matchesContainer.innerHTML += `
 
         <div class="card">
@@ -124,17 +133,26 @@
 
           <input
             type="number"
+            id="team1-${match.id}"
             placeholder="${match.team1} score"
+            value="${savedPrediction ? savedPrediction.score1 : ""}"
           >
 
           <input
             type="number"
+            id="team2-${match.id}"
             placeholder="${match.team2} score"
+            value="${savedPrediction ? savedPrediction.score2 : ""}"
           >
 
-          <button onclick="submitPrediction()">
+          <button onclick="submitPrediction(${match.id})">
             Submit Prediction
           </button>
+
+          <div
+            class="saved"
+            id="saved-${match.id}">
+          </div>
 
         </div>
 
@@ -142,9 +160,32 @@
 
     });
 
-    function submitPrediction() {
+    function submitPrediction(matchId) {
 
-      alert("✅ Prediction Submitted!");
+      const score1 =
+        document.getElementById(
+          `team1-${matchId}`
+        ).value;
+
+      const score2 =
+        document.getElementById(
+          `team2-${matchId}`
+        ).value;
+
+      const prediction = {
+        score1,
+        score2
+      };
+
+      localStorage.setItem(
+        matchId,
+        JSON.stringify(prediction)
+      );
+
+      document.getElementById(
+        `saved-${matchId}`
+      ).innerText =
+        "✅ Prediction Saved";
 
     }
 
