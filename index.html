@@ -2,43 +2,175 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Predizone Prototype</title>
+    <title>Predizone Admin & Player Dashboard</title>
     <style>
-        body { font-family: sans-serif; background-color: #f4f4f9; padding: 40px; text-align: center; }
-        .match-card { background: white; padding: 20px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        input { width: 40px; padding: 8px; font-size: 18px; text-align: center; margin: 0 10px; }
-        button { background: #22c55e; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 15px; }
-        button:hover { background: #16a34a; }
-        #result-box { margin-top: 20px; font-weight: bold; font-size: 18px; color: #1e3a8a; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1, h2 { color: #1e3a8a; }
+        .panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .admin-panel { border: 2px solid #3b82f6; background: #eff6ff; }
+        .match-card { background: white; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 5px solid #22c55e; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        input[type="number"] { width: 50px; padding: 5px; text-align: center; font-size: 16px; }
+        input[type="text"] { padding: 6px; font-size: 14px; width: 150px; }
+        button { background: #1e3a8a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button.admin-btn { background: #3b82f6; }
+        button:hover { opacity: 0.9; }
+        .score-display { font-weight: bold; color: #4b5563; }
+        .points-badge { background: #dcfce7; color: #15803d; padding: 5px 10px; border-radius: 20px; font-size: 14px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>🏆 Predizone Dashboard</h1>
-    <p>Test your prediction scoring logic below!</p>
+    <h1>🏆 Predizone Web App</h1>
+    
+    <div class="panel admin-panel">
+        <h2>🛠️ Admin Control Panel (Daily Match Editor)</h2>
+        <p>Use this to add new matches or input final scores when games finish.</p>
+        <div>
+            <input type="text" id="newHomeTeam" placeholder="Home Team (e.g., Brazil)"> 
+            <span>vs</span>
+            <input type="text" id="newAwayTeam" placeholder="Away Team (e.g., Italy)">
+            <button class="admin-btn" onclick="addMatch()">+ Add Daily Match</button>
+        </div>
+    </div>
 
-    <!-- Match Card -->
-    <div class="match-card">
-        <h3>Group A: Match 1</h3>
-        <p><strong>Mexico vs. South Africa</strong></p>
-        
-        <!-- Inputs for User Prediction -->
-        <input type="number" id="predHome" placeholder="0" min="0">
-        <span>-</span>
-        <input type="number" id="predAway" placeholder="0" min="0">
-        
-        <br>
-        <button onclick="calculatePoints()">Submit Prediction</button>
-        
-        <div id="result-box"></div>
+    <div class="panel">
+        <h2>⚽ Daily Match Predictions</h2>
+        <p>Type your predictions below. If you guess perfectly, you get 5 points!</p>
+        <div id="matchList">
+            </div>
     </div>
 
     <script>
-        // This is where our math logic will go next!
-        function calculatePoints() {
-            // Right now, it just says hello when clicked
-            document.getElementById('result-box').innerText = "Prediction submitted! Let's write the scoring math next.";
+        // Load existing matches from browser memory, or start empty if it's the first time
+        let matches = JSON.parse(localStorage.getItem('predizone_matches')) || [];
+
+        // Function for ADMIN to add a new match
+        function addMatch() {
+            const home = document.getElementById('newHomeTeam').value;
+            const away = document.getElementById('newAwayTeam').value;
+
+            if (!home || !away) {
+                alert("Please enter both team names!");
+                return;
+            }
+
+            // Create a match structure
+            const newMatch = {
+                id: Date.now(), // Unique ID based on time
+                homeTeam: home,
+                awayTeam: away,
+                realHomeScore: null, // Starts blank until admin enters it later
+                realAwayScore: null,
+                userHomePred: "",
+                userAwayPred: ""
+            };
+
+            matches.push(newMatch);
+            saveAndRefresh();
+            
+            // Clear input boxes
+            document.getElementById('newHomeTeam').value = "";
+            document.getElementById('newAwayTeam').value = "";
         }
+
+        // Function for ADMIN to lock in final score and settle points
+        function settleMatch(matchId, homeInputId, awayInputId) {
+            const homeScore = parseInt(document.getElementById(homeInputId).value);
+            const awayScore = parseInt(document.getElementById(awayInputId).value);
+
+            if (isNaN(homeScore) || isNaN(awayScore)) {
+                alert("Please enter the official final score!");
+                return;
+            }
+
+            // Find the match in our array and update its official score
+            const match = matches.find(m => m.id === matchId);
+            match.realHomeScore = homeScore;
+            match.realAwayScore = awayScore;
+
+            saveAndRefresh();
+        }
+
+        // Function for CONTESTANT to save their prediction
+        function savePrediction(matchId, homeInputId, awayInputId) {
+            const homePred = parseInt(document.getElementById(homeInputId).value);
+            const awayPred = parseInt(document.getElementById(awayInputId).value);
+
+            if (isNaN(homePred) || isNaN(awayPred)) {
+                alert("Please predict scores for both teams!");
+                return;
+            }
+
+            const match = matches.find(m => m.id === matchId);
+            match.userHomePred = homePred;
+            match.userAwayPred = awayPred;
+
+            saveAndRefresh();
+            alert("Prediction saved successfully!");
+        }
+
+        // Helper function to save everything to Browser Memory and redraw the screen
+        function saveAndRefresh() {
+            localStorage.setItem('predizone_matches', JSON.stringify(matches));
+            renderMatches();
+        }
+
+        // Function to draw the matches visually onto the screen
+        function renderMatches() {
+            const container = document.getElementById('matchList');
+            if (matches.length === 0) {
+                container.innerHTML = "<p style='color:#888;'>No matches added for today yet.</p>";
+                return;
+            }
+
+            container.innerHTML = ""; // Clear old display
+
+            matches.forEach(match => {
+                let statusHtml = "";
+                let scoreRuleHtml = "";
+
+                // Determine points if match is finished
+                if (match.realHomeScore !== null) {
+                    const wonFivePoints = (match.userHomePred === match.realHomeScore) && (match.userAwayPred === match.realAwayScore);
+                    const points = wonFivePoints ? 5 : 0;
+                    statusHtml = `<span class="points-badge">${points} Points Earned</span>`;
+                    scoreRuleHtml = `<p class="score-display">Final Result: ${match.realHomeScore} - ${match.realAwayScore}</p>`;
+                } else {
+                    // Match still active, show inputs for player and admin controls
+                    statusHtml = `
+                        <div>
+                            <input type="number" id="predH_${match.id}" value="${match.userHomePred}" placeholder="0">
+                            <span>-</span>
+                            <input type="number" id="predA_${match.id}" value="${match.userAwayPred}" placeholder="0">
+                            <button onclick="savePrediction(${match.id}, 'predH_${match.id}', 'predA_${match.id}')">Save</button>
+                        </div>
+                    `;
+                    
+                    scoreRuleHtml = `
+                        <div style="background: #fee2e2; padding: 5px; border-radius: 4px; font-size:12px; margin-top:5px;">
+                            <span>Admin Result Entry:</span>
+                            <input type="number" id="realH_${match.id}" style="width:35px;"> : <input type="number" id="realA_${match.id}" style="width:35px;">
+                            <button class="admin-btn" style="padding:2px 5px; font-size:11px;" onclick="settleMatch(${match.id}, 'realH_${match.id}', 'realA_${match.id}')">End Match</button>
+                        </div>
+                    `;
+                }
+
+                container.innerHTML += `
+                    <div class="match-card">
+                        <div>
+                            <strong>${match.homeTeam} vs ${match.awayTeam}</strong>
+                            ${scoreRuleHtml}
+                        </div>
+                        <div>
+                            ${statusHtml}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Run this immediately when the website loads to display existing data
+        renderMatches();
     </script>
 
 </body>
