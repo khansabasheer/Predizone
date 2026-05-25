@@ -2,176 +2,223 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Predizone Admin & Player Dashboard</title>
+    <title>Predizone Multi-Player Edition</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; max-width: 800px; margin: 0 auto; }
-        h1, h2 { color: #1e3a8a; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        h1, h2 { color: #1e3a8a; margin-top: 0; }
+        .header-banner { grid-column: 1 / -1; background: #1e3a8a; color: white; padding: 20px; border-radius: 12px; text-align: center; }
         .panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .admin-panel { border: 2px solid #3b82f6; background: #eff6ff; }
-        .match-card { background: white; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 5px solid #22c55e; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        input[type="number"] { width: 50px; padding: 5px; text-align: center; font-size: 16px; }
-        input[type="text"] { padding: 6px; font-size: 14px; width: 150px; }
-        button { background: #1e3a8a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        button.admin-btn { background: #3b82f6; }
+        .admin-panel { border: 2px solid #ef4444; background: #fef2f2; }
+        .match-card { background: white; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 5px solid #3b82f6; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="number"] { width: 45px; text-align: center; }
+        button { background: #1e3a8a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button.admin-btn { background: #ef4444; }
         button:hover { opacity: 0.9; }
-        .score-display { font-weight: bold; color: #4b5563; }
-        .points-badge { background: #dcfce7; color: #15803d; padding: 5px 10px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+        .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .leaderboard-table th, .leaderboard-table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        .leaderboard-table th { background: #f3f4f6; }
+        .badge { background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>🏆 Predizone Web App</h1>
-    
-    <div class="panel admin-panel">
-        <h2>🛠️ Admin Control Panel (Daily Match Editor)</h2>
-        <p>Use this to add new matches or input final scores when games finish.</p>
-        <div>
-            <input type="text" id="newHomeTeam" placeholder="Home Team (e.g., Brazil)"> 
-            <span>vs</span>
-            <input type="text" id="newAwayTeam" placeholder="Away Team (e.g., Italy)">
-            <button class="admin-btn" onclick="addMatch()">+ Add Daily Match</button>
+    <div class="header-banner">
+        <h1>🏆 Predizone: Multi-Contestant Edition</h1>
+        <p>Current Active Player: <strong id="currentPlayerDisplay">None (Please Join Below)</strong></p>
+    </div>
+
+    <div>
+        <div class="panel">
+            <h2>👤 Step 1: Contestant Join / Switch</h2>
+            <input type="text" id="usernameInput" placeholder="Enter contestant name">
+            <button onclick="switchPlayer()">Set Active Player</button>
+        </div>
+
+        <div class="panel">
+            <h2>⚽ Step 2: Live Match Predictions</h2>
+            <div id="matchList"></div>
+        </div>
+
+        <div class="panel admin-panel">
+            <h2>🛠️ Admin Control Panel (Enter Official Results)</h2>
+            <div style="margin-bottom: 15px;">
+                <input type="text" id="newHomeTeam" placeholder="Home Team"> vs 
+                <input type="text" id="newAwayTeam" placeholder="Away Team">
+                <button class="admin-btn" onclick="addMatch()">Create Match</button>
+            </div>
+            <div id="adminMatchList"></div>
         </div>
     </div>
 
-    <div class="panel">
-        <h2>⚽ Daily Match Predictions</h2>
-        <p>Type your predictions below. If you guess perfectly, you get 5 points!</p>
-        <div id="matchList">
-            </div>
+    <div>
+        <div class="panel">
+            <h2>📊 Live Leaderboard</h2>
+            <p>Calculates automatically when Admin ends a match!</p>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Points</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
-        // Load existing matches from browser memory, or start empty if it's the first time
-        let matches = JSON.parse(localStorage.getItem('predizone_matches')) || [];
+        // Core Arrays stored in Browser Memory
+        let matches = JSON.parse(localStorage.getItem('pz_matches')) || [];
+        let players = JSON.parse(localStorage.getItem('pz_players')) || {}; // Structure: { "Alex": 0, "Sarah": 0 }
+        let predictions = JSON.parse(localStorage.getItem('pz_predictions')) || []; // Structure: [{id, matchId, player, homePred, awayPred}]
+        
+        let currentPlayer = localStorage.getItem('pz_currentPlayer') || "";
 
-        // Function for ADMIN to add a new match
-        function addMatch() {
-            const home = document.getElementById('newHomeTeam').value;
-            const away = document.getElementById('newAwayTeam').value;
-
-            if (!home || !away) {
-                alert("Please enter both team names!");
-                return;
+        function switchPlayer() {
+            const name = document.getElementById('usernameInput').value.trim();
+            if(!name) return alert("Type a name!");
+            
+            currentPlayer = name;
+            if (players[currentPlayer] === undefined) {
+                players[currentPlayer] = 0; // Initialize new player with 0 points
             }
+            localStorage.setItem('pz_currentPlayer', currentPlayer);
+            document.getElementById('usernameInput').value = "";
+            saveAndRefresh();
+        }
 
-            // Create a match structure
-            const newMatch = {
-                id: Date.now(), // Unique ID based on time
+        function addMatch() {
+            const home = document.getElementById('newHomeTeam').value.trim();
+            const away = document.getElementById('newAwayTeam').value.trim();
+            if (!home || !away) return alert("Fill in teams!");
+
+            matches.push({
+                id: Date.now(),
                 homeTeam: home,
                 awayTeam: away,
-                realHomeScore: null, // Starts blank until admin enters it later
-                realAwayScore: null,
-                userHomePred: "",
-                userAwayPred: ""
-            };
-
-            matches.push(newMatch);
-            saveAndRefresh();
+                realHomeScore: null,
+                realAwayScore: null
+            });
             
-            // Clear input boxes
             document.getElementById('newHomeTeam').value = "";
             document.getElementById('newAwayTeam').value = "";
+            saveAndRefresh();
         }
 
-        // Function for ADMIN to lock in final score and settle points
-        function settleMatch(matchId, homeInputId, awayInputId) {
-            const homeScore = parseInt(document.getElementById(homeInputId).value);
-            const awayScore = parseInt(document.getElementById(awayInputId).value);
+        function savePrediction(matchId) {
+            if(!currentPlayer) return alert("Please set an Active Player identity first at the top!");
+            const hPred = parseInt(document.getElementById(`predH_${matchId}`).value);
+            const aPred = parseInt(document.getElementById(`predA_${matchId}`).value);
 
-            if (isNaN(homeScore) || isNaN(awayScore)) {
-                alert("Please enter the official final score!");
-                return;
+            if(isNaN(hPred) || isNaN(aPred)) return alert("Enter both scores!");
+
+            // Look if prediction already exists for this player/match combo, otherwise make a new one
+            let pred = predictions.find(p => p.matchId === matchId && p.player === currentPlayer);
+            if(pred) {
+                pred.homePred = hPred;
+                pred.awayPred = aPred;
+            } else {
+                predictions.push({ id: Date.now(), matchId, player: currentPlayer, homePred: hPred, awayPred: aPred });
             }
 
-            // Find the match in our array and update its official score
+            saveAndRefresh();
+            alert("Prediction locked in!");
+        }
+
+        function settleMatch(matchId) {
+            const hScore = parseInt(document.getElementById(`realH_${matchId}`).value);
+            const aScore = parseInt(document.getElementById(`realA_${matchId}`).value);
+            if(isNaN(hScore) || isNaN(aScore)) return alert("Enter official final scores!");
+
             const match = matches.find(m => m.id === matchId);
-            match.realHomeScore = homeScore;
-            match.realAwayScore = awayScore;
+            match.realHomeScore = hScore;
+            match.realAwayScore = aScore;
+
+            // CRITICAL STEP: Loop through everyone's predictions for this match and update scores
+            predictions.forEach(pred => {
+                if(pred.matchId === matchId) {
+                    if(pred.homePred === hScore && pred.awayPred === aScore) {
+                        players[pred.player] += 5; // Give them 5 points on the scoreboard
+                    }
+                }
+            });
 
             saveAndRefresh();
         }
 
-        // Function for CONTESTANT to save their prediction
-        function savePrediction(matchId, homeInputId, awayInputId) {
-            const homePred = parseInt(document.getElementById(homeInputId).value);
-            const awayPred = parseInt(document.getElementById(awayInputId).value);
-
-            if (isNaN(homePred) || isNaN(awayPred)) {
-                alert("Please predict scores for both teams!");
-                return;
-            }
-
-            const match = matches.find(m => m.id === matchId);
-            match.userHomePred = homePred;
-            match.userAwayPred = awayPred;
-
-            saveAndRefresh();
-            alert("Prediction saved successfully!");
-        }
-
-        // Helper function to save everything to Browser Memory and redraw the screen
         function saveAndRefresh() {
-            localStorage.setItem('predizone_matches', JSON.stringify(matches));
-            renderMatches();
+            localStorage.setItem('pz_matches', JSON.stringify(matches));
+            localStorage.setItem('pz_players', JSON.stringify(players));
+            localStorage.setItem('pz_predictions', JSON.stringify(predictions));
+            renderAll();
         }
 
-        // Function to draw the matches visually onto the screen
-        function renderMatches() {
-            const container = document.getElementById('matchList');
-            if (matches.length === 0) {
-                container.innerHTML = "<p style='color:#888;'>No matches added for today yet.</p>";
-                return;
-            }
-
-            container.innerHTML = ""; // Clear old display
+        function renderAll() {
+            document.getElementById('currentPlayerDisplay').innerText = currentPlayer ? currentPlayer : "None";
+            
+            // Render Player Matches
+            const mList = document.getElementById('matchList');
+            mList.innerHTML = matches.length === 0 ? "<p>No matches generated yet.</p>" : "";
+            
+            // Render Admin Score Board Panel
+            const amList = document.getElementById('adminMatchList');
+            amList.innerHTML = "";
 
             matches.forEach(match => {
-                let statusHtml = "";
-                let scoreRuleHtml = "";
+                // Find current user's prediction if it exists
+                let myPred = predictions.find(p => p.matchId === match.id && p.player === currentPlayer);
+                let homeVal = myPred ? myPred.homePred : "";
+                let awayVal = myPred ? myPred.awayPred : "";
 
-                // Determine points if match is finished
-                if (match.realHomeScore !== null) {
-                    const wonFivePoints = (match.userHomePred === match.realHomeScore) && (match.userAwayPred === match.realAwayScore);
-                    const points = wonFivePoints ? 5 : 0;
-                    statusHtml = `<span class="points-badge">${points} Points Earned</span>`;
-                    scoreRuleHtml = `<p class="score-display">Final Result: ${match.realHomeScore} - ${match.realAwayScore}</p>`;
+                if(match.realHomeScore !== null) {
+                    // Match Finished display
+                    mList.innerHTML += `
+                        <div class="match-card" style="border-left-color: #10b981;">
+                            <strong>${match.homeTeam} vs ${match.awayTeam}</strong><br>
+                            <small>Final Score: ${match.realHomeScore}-${match.realAwayScore} | Your Guess: ${homeVal !== "" ? homeVal+'-'+awayVal : 'None'}</small>
+                        </div>`;
                 } else {
-                    // Match still active, show inputs for player and admin controls
-                    statusHtml = `
-                        <div>
-                            <input type="number" id="predH_${match.id}" value="${match.userHomePred}" placeholder="0">
-                            <span>-</span>
-                            <input type="number" id="predA_${match.id}" value="${match.userAwayPred}" placeholder="0">
-                            <button onclick="savePrediction(${match.id}, 'predH_${match.id}', 'predA_${match.id}')">Save</button>
-                        </div>
-                    `;
+                    // Open Match display
+                    mList.innerHTML += `
+                        <div class="match-card">
+                            <span style="display:inline-block; width:200px;"><strong>${match.homeTeam} vs ${match.awayTeam}</strong></span>
+                            <input type="number" id="predH_${match.id}" value="${homeVal}"> - 
+                            <input type="number" id="predA_${match.id}" value="${awayVal}">
+                            <button onclick="savePrediction(${match.id})">Lock Guess</button>
+                        </div>`;
                     
-                    scoreRuleHtml = `
-                        <div style="background: #fee2e2; padding: 5px; border-radius: 4px; font-size:12px; margin-top:5px;">
-                            <span>Admin Result Entry:</span>
-                            <input type="number" id="realH_${match.id}" style="width:35px;"> : <input type="number" id="realA_${match.id}" style="width:35px;">
-                            <button class="admin-btn" style="padding:2px 5px; font-size:11px;" onclick="settleMatch(${match.id}, 'realH_${match.id}', 'realA_${match.id}')">End Match</button>
-                        </div>
-                    `;
+                    // Admin management view row
+                    amList.innerHTML += `
+                        <div style="margin-top: 5px; padding: 5px; background: white; border-radius:4px;">
+                            <span>${match.homeTeam} vs ${match.awayTeam}: </span>
+                            <input type="number" id="realH_${match.id}"> : <input type="number" id="realA_${match.id}">
+                            <button class="admin-btn" onclick="settleMatch(${match.id})">Settle Match & Award Points</button>
+                        </div>`;
                 }
+            });
 
-                container.innerHTML += `
-                    <div class="match-card">
-                        <div>
-                            <strong>${match.homeTeam} vs ${match.awayTeam}</strong>
-                            ${scoreRuleHtml}
-                        </div>
-                        <div>
-                            ${statusHtml}
-                        </div>
-                    </div>
-                `;
+            // Calculate and Render Leaderboard Table sorted by score
+            const lbBody = document.getElementById('leaderboardBody');
+            lbBody.innerHTML = "";
+            
+            let sortedPlayers = Object.keys(players).map(name => ({name, points: players[name]}))
+                                     .sort((a,b) => b.points - a.points);
+
+            sortedPlayers.forEach((player, index) => {
+                lbBody.innerHTML += `
+                    <tr>
+                        <td><strong>#${index + 1}</strong></td>
+                        <td>${player.name} ${player.name === currentPlayer ? '<span class="badge">You</span>':''}</td>
+                        <td>${player.points} pts</td>
+                    </tr>`;
             });
         }
 
-        // Run this immediately when the website loads to display existing data
-        renderMatches();
+        // Run immediately on page startup
+        renderAll();
     </script>
-
 </body>
 </html>
